@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+
+{% block title %}InboxFlow | Fila operacional{% endblock %}
+
+{% block content %}
+    <header class="topbar">
+        <div>
+            <h1 class="brand">InboxFlow</h1>
+            <p class="subtitle">
+                Entrada manual e fila operacional inicial para organizar mensagens e demandas sem depender
+                de integracoes externas.
+            </p>
+        </div>
+        <a class="admin-link" href="/admin/">Abrir admin</a>
+    </header>
+
+    {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <div class="message {% if message.tags %}{{ message.tags }}{% endif %}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <section class="layout">
+        <article class="panel">
+            <div class="panel-inner">
+                <h2>Novo inbox item</h2>
+                <p>Registre uma mensagem ou demanda e deixe a fila visivel desde o primeiro dia.</p>
+
+                <form method="post" action="{% url 'inbox:item_create' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="next_query" value="{{ active_query }}">
+                    <div class="form-grid">
+                        {% for field in create_form %}
+                            <div class="field">
+                                {{ field.errors }}
+                                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {{ field }}
+                                {% if field.help_text %}
+                                    <span class="helptext">{{ field.help_text }}</span>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <div class="actions">
+                        <button class="button" type="submit">Adicionar item</button>
+                    </div>
+                </form>
+            </div>
+        </article>
+
+        <article class="panel">
+            <div class="panel-inner">
+                <div class="dashboard">
+                    <div>
+                        <h2>Dashboard minimo</h2>
+                        <p>Resumo operacional do momento, sem substituir a fila detalhada abaixo.</p>
+                    </div>
+
+                    <div class="metric-grid">
+                        <article class="metric-card">
+                            <strong>{{ dashboard_metrics.total }}</strong>
+                            <span>Total de itens</span>
+                        </article>
+                        <article class="metric-card">
+                            <strong>{{ dashboard_metrics.novos }}</strong>
+                            <span>Novos</span>
+                        </article>
+                        <article class="metric-card urgent">
+                            <strong>{{ dashboard_metrics.urgentes }}</strong>
+                            <span>Urgentes</span>
+                        </article>
+                        <article class="metric-card">
+                            <strong>{{ dashboard_metrics.aguardando_resposta }}</strong>
+                            <span>Aguardando resposta</span>
+                        </article>
+                        <article class="metric-card">
+                            <strong>{{ dashboard_metrics.resolvidos }}</strong>
+                            <span>Resolvidos</span>
+                        </article>
+                    </div>
+
+                    <div class="queue-board">
+                        {% for section in queue_sections %}
+                            <article class="queue-card">
+                                <div class="queue-card-head">
+                                    <h3>{{ section.title }}</h3>
+                                    <a href="{% url 'inbox:item_list' %}?{{ section.query }}">Abrir fila</a>
+                                </div>
+                                <p>{{ section.description }}</p>
+
+                                {% if section.items %}
+                                    <div class="queue-list">
+                                        {% for item in section.items %}
+                                            <div class="queue-item">
+                                                <strong>
+                                                    {{ item.contato_nome|default:"Sem contato" }}
+                                                    {% if item.empresa %}
+                                                        - {{ item.empresa }}
+                                                    {% endif %}
+                                                </strong>
+                                                <span>
+                                                    {{ item.get_status_display }}
+                                                    {% if item.urgencia %}
+                                                        - {{ item.get_urgencia_display }}
+                                                    {% endif %}
+                                                    - {{ item.created_at|date:"d/m H:i" }}
+                                                </span>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <div class="empty-state">{{ section.empty_message }}</div>
+                                {% endif %}
+                            </article>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="list-head">
+                    <div>
+                        <h2>Fila atual</h2>
+                        <p>Itens mais recentes primeiro, com filtros simples para separar a fila operacional.</p>
+                    </div>
+                    <span class="count">
+                        {% if has_active_filters %}
+                            {{ filtered_count }} de {{ total_items }} item(ns)
+                        {% else %}
+                            {{ total_items }} item(ns)
+                        {% endif %}
+                    </span>
+                </div>
+
+                <div class="filters">
+                    <form method="get">
+                        {% for field in filter_form %}
+                            <div class="field">
+                                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {{ field }}
+                            </div>
+                        {% endfor %}
+                        <button class="button secondary" type="submit">Filtrar</button>
+                        {% if has_active_filters %}
+                            <a class="filter-clear" href="{% url 'inbox:item_list' %}">Limpar</a>
+                        {% endif %}
+                    </form>
+                </div>
+
+                {% if item_cards %}
+                    <div class="items">
+                        {% for card in item_cards %}
+                            {% with item=card.item triage_form=card.triage_form %}
+                            <article class="item {% if item.urgencia == item.Urgencia.ALTA %}urgente{% endif %}">
+                                <div class="item-top">
+                                    <div>
+                                        <h3 class="item-title">
+                                            {{ item.contato_nome|default:"Sem contato" }}
+                                            {% if item.empresa %}
+                                                - {{ item.empresa }}
+                                            {% endif %}
+                                        </h3>
+                                    </div>
+                                    <span class="badge status">{{ item.get_status_display }}</span>
+                                </div>
+
+                                <div class="item-meta">
+                                    <span class="badge">{{ item.get_canal_origem_display }}</span>
+                                    <span class="badge">
+                                        {% if item.categoria %}
+                                            {{ item.get_categoria_display }}
+                                        {% else %}
+                                            Sem categoria
+                                        {% endif %}
+                                    </span>
+                                    <span class="badge {% if item.urgencia == item.Urgencia.ALTA %}alta{% endif %}">
+                                        {% if item.urgencia %}
+                                            {{ item.get_urgencia_display }}
+                                        {% else %}
+                                            Sem urgencia
+                                        {% endif %}
+                                    </span>
+                                </div>
+
+                                <p class="item-body">{{ item.conteudo }}</p>
+
+                                <div class="item-footer">
+                                    {% if item.tags %}
+                                        Tags: {{ item.tags }} |
+                                    {% endif %}
+                                    Criado em {{ item.created_at|date:"d/m/Y H:i" }}
+                                </div>
+
+                                <div class="suggestion-box">
+                                    <div class="suggestion-head">
+                                        <div>
+                                            <h4>Sugestoes do MVP</h4>
+                                            <p class="count">Fallback heuristico simples para apoiar a triagem.</p>
+                                        </div>
+                                        <div class="triage-actions">
+                                            {% if item.tem_sugestoes %}
+                                                <form method="post" action="{% url 'inbox:item_apply_suggestions' item.pk %}">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="next_query" value="{{ active_query }}">
+                                                    <button class="button secondary" type="submit">Aplicar na triagem</button>
+                                                </form>
+                                            {% endif %}
+                                            <form method="post" action="{% url 'inbox:item_generate_suggestions' item.pk %}">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="next_query" value="{{ active_query }}">
+                                                <button class="button ghost" type="submit">Gerar sugestoes</button>
+                                            </form>
+                                        </div>
+                                    </div>
+
+                                    {% if item.tem_sugestoes %}
+                                        <div class="item-meta">
+                                            <span class="badge">
+                                                {% if item.sugestao_categoria %}
+                                                    Categoria sugerida: {{ item.get_sugestao_categoria_display }}
+                                                {% else %}
+                                                    Categoria sugerida: sem sinal claro
+                                                {% endif %}
+                                            </span>
+                                            <span class="badge {% if item.sugestao_urgencia == item.Urgencia.ALTA %}alta{% endif %}">
+                                                {% if item.sugestao_urgencia %}
+                                                    Urgencia sugerida: {{ item.get_sugestao_urgencia_display }}
+                                                {% else %}
+                                                    Urgencia sugerida: sem sinal claro
+                                                {% endif %}
+                                            </span>
+                                        </div>
+
+                                        <div class="suggestion-copy">
+                                            <p>
+                                                <strong>Proxima acao</strong><br>
+                                                {{ item.sugestao_proxima_acao }}
+                                            </p>
+                                            <p>
+                                                <strong>Resposta inicial curta</strong><br>
+                                                {{ item.sugestao_resposta }}
+                                            </p>
+                                        </div>
+                                    {% else %}
+                                        <div class="empty-state">
+                                            Nenhuma sugestao gerada ainda para este item.
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="triage-box">
+                                    <form method="post" action="{% url 'inbox:item_triage_update' item.pk %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="next_query" value="{{ active_query }}">
+                                        <div class="triage-grid">
+                                            {% for field in triage_form %}
+                                                <div class="field">
+                                                    {{ field.errors }}
+                                                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                                    {{ field }}
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                        <div class="triage-actions">
+                                            <button class="button secondary" type="submit">Salvar triagem</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </article>
+                            {% endwith %}
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        {% if has_active_filters %}
+                            Nenhum item encontrado com os filtros atuais.
+                        {% else %}
+                            Nenhum item registrado ainda. Use o formulario ao lado para iniciar a fila.
+                            <br><br>
+                            Para popular a demo local rapidamente, rode:
+                            <br>
+                            <code>python app/manage.py seed_demo_inbox --reset</code>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        </article>
+    </section>
+{% endblock %}

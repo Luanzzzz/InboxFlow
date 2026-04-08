@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}InboxFlow{% endblock %}</title>
+    <style>
+        :root {
+            --bg: #f3efe6;
+            --panel: #fffdf8;
+            --panel-strong: #ffffff;
+            --text: #20201d;
+            --muted: #6d675c;
+            --line: #ddd2bf;
+            --accent: #155e63;
+            --accent-soft: #d7eceb;
+            --danger: #9a3412;
+            --danger-soft: #fde7dd;
+            --ok: #365314;
+            --ok-soft: #ecf6d9;
+            --shadow: 0 18px 40px rgba(36, 30, 18, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top left, #fdf4d8 0, transparent 28%),
+                linear-gradient(180deg, #f8f5ee 0%, var(--bg) 100%);
+        }
+
+        a {
+            color: inherit;
+        }
+
+        .shell {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 32px 20px 48px;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .brand {
+            margin: 0;
+            font-size: clamp(2rem, 3vw, 2.8rem);
+            line-height: 1;
+            letter-spacing: -0.04em;
+        }
+
+        .subtitle {
+            margin: 8px 0 0;
+            max-width: 680px;
+            color: var(--muted);
+        }
+
+        .admin-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.65);
+            text-decoration: none;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
+            gap: 20px;
+            align-items: start;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid rgba(130, 112, 74, 0.12);
+            border-radius: 22px;
+            box-shadow: var(--shadow);
+        }
+
+        .panel-inner {
+            padding: 22px;
+        }
+
+        .panel h2 {
+            margin: 0 0 8px;
+            font-size: 1.2rem;
+        }
+
+        .panel p {
+            margin: 0 0 18px;
+            color: var(--muted);
+        }
+
+        .form-grid {
+            display: grid;
+            gap: 14px;
+        }
+
+        .field label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .field input,
+        .field select,
+        .field textarea {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            background: var(--panel-strong);
+            color: var(--text);
+            font: inherit;
+        }
+
+        .field .helptext {
+            display: block;
+            margin-top: 6px;
+            color: var(--muted);
+            font-size: 0.85rem;
+        }
+
+        .field .errorlist {
+            margin: 0 0 8px;
+            padding: 0;
+            list-style: none;
+            color: var(--danger);
+            font-size: 0.9rem;
+        }
+
+        .actions {
+            margin-top: 4px;
+        }
+
+        .button {
+            border: 0;
+            border-radius: 999px;
+            padding: 12px 18px;
+            background: var(--accent);
+            color: white;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .messages {
+            display: grid;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+
+        .message {
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: var(--ok-soft);
+            color: var(--ok);
+        }
+
+        .message.error {
+            background: var(--danger-soft);
+            color: var(--danger);
+        }
+
+        .list-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+
+        .dashboard {
+            display: grid;
+            gap: 18px;
+            margin-bottom: 18px;
+        }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .metric-card {
+            padding: 16px;
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.68);
+        }
+
+        .metric-card strong {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 1.6rem;
+            line-height: 1;
+        }
+
+        .metric-card span {
+            display: block;
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        .metric-card.urgent {
+            border-color: rgba(154, 52, 18, 0.18);
+            background: linear-gradient(180deg, rgba(255, 248, 243, 0.9) 0%, rgba(253, 231, 221, 0.72) 100%);
+        }
+
+        .queue-board {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .queue-card {
+            padding: 16px;
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.62);
+        }
+
+        .queue-card-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: baseline;
+            margin-bottom: 10px;
+        }
+
+        .queue-card-head h3 {
+            margin: 0;
+            font-size: 1rem;
+        }
+
+        .queue-card-head a {
+            color: var(--accent);
+            font-size: 0.86rem;
+            text-decoration: none;
+        }
+
+        .queue-card p {
+            margin-bottom: 12px;
+            font-size: 0.9rem;
+        }
+
+        .queue-list {
+            display: grid;
+            gap: 8px;
+        }
+
+        .queue-item {
+            padding: 10px 12px;
+            border-radius: 14px;
+            background: rgba(240, 236, 225, 0.75);
+        }
+
+        .queue-item strong {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 0.94rem;
+        }
+
+        .queue-item span {
+            display: block;
+            color: var(--muted);
+            font-size: 0.84rem;
+        }
+
+        .filters {
+            margin-bottom: 18px;
+            padding: 16px;
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.55);
+        }
+
+        .filters form {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr)) auto auto;
+            gap: 10px;
+            align-items: end;
+        }
+
+        .filters .field label {
+            font-size: 0.84rem;
+        }
+
+        .filters .field input,
+        .filters .field select,
+        .filters .field textarea {
+            padding: 10px 12px;
+            border-radius: 12px;
+        }
+
+        .filter-clear {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 46px;
+            padding: 0 14px;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: transparent;
+            text-decoration: none;
+        }
+
+        .count {
+            color: var(--muted);
+            font-size: 0.95rem;
+        }
+
+        .items {
+            display: grid;
+            gap: 14px;
+        }
+
+        .item {
+            padding: 18px;
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.72);
+        }
+
+        .item.urgente {
+            border-color: rgba(154, 52, 18, 0.28);
+            background: linear-gradient(180deg, #fff8f3 0%, var(--danger-soft) 100%);
+        }
+
+        .item-top {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .item-title {
+            margin: 0;
+            font-size: 1.05rem;
+        }
+
+        .item-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: #f0ece1;
+            color: #4c463c;
+            font-size: 0.84rem;
+            font-weight: 700;
+        }
+
+        .badge.alta {
+            background: var(--danger-soft);
+            color: var(--danger);
+        }
+
+        .badge.status {
+            background: var(--accent-soft);
+            color: var(--accent);
+        }
+
+        .item-body {
+            margin: 0;
+            color: #363126;
+            white-space: pre-wrap;
+        }
+
+        .item-footer {
+            margin-top: 12px;
+            color: var(--muted);
+            font-size: 0.88rem;
+        }
+
+        .triage-box {
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px solid var(--line);
+        }
+
+        .suggestion-box {
+            margin-top: 14px;
+            padding: 14px;
+            border: 1px dashed rgba(21, 94, 99, 0.25);
+            border-radius: 16px;
+            background: linear-gradient(180deg, rgba(215, 236, 235, 0.35) 0%, rgba(255, 255, 255, 0.55) 100%);
+        }
+
+        .suggestion-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .suggestion-head h4 {
+            margin: 0;
+            font-size: 0.98rem;
+        }
+
+        .suggestion-copy {
+            display: grid;
+            gap: 10px;
+            color: #2f352f;
+        }
+
+        .suggestion-copy p {
+            margin: 0;
+            color: #2f352f;
+        }
+
+        .suggestion-copy strong {
+            display: inline-block;
+            margin-bottom: 4px;
+        }
+
+        .triage-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .triage-grid .field label {
+            font-size: 0.84rem;
+        }
+
+        .triage-grid .field input,
+        .triage-grid .field select,
+        .triage-grid .field textarea {
+            padding: 10px 12px;
+            border-radius: 12px;
+        }
+
+        .triage-actions {
+            margin-top: 12px;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .button.secondary {
+            background: #244f55;
+        }
+
+        .button.ghost {
+            background: transparent;
+            color: var(--accent);
+            border: 1px solid rgba(21, 94, 99, 0.25);
+        }
+
+        .empty-state {
+            padding: 28px;
+            border: 1px dashed var(--line);
+            border-radius: 18px;
+            text-align: center;
+            color: var(--muted);
+            background: rgba(255, 255, 255, 0.45);
+        }
+
+        @media (max-width: 920px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .metric-grid,
+            .queue-board,
+            .filters form {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 700px) {
+            .metric-grid,
+            .triage-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .queue-board,
+            .filters form {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>
