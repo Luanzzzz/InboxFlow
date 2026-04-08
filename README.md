@@ -348,6 +348,7 @@ Desenvolvedor com foco em projetos que resolvem problemas reais com tecnologia c
 
 - GitHub: [github.com/Luanzzzz](https://github.com/Luanzzzz)
 - LinkedIn: https://www.linkedin.com/in/luan-valentino-dos-santos-a2059928b/
+- Instagram: luanvalentino.dev
 
 ---
 
